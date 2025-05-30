@@ -89,8 +89,13 @@ const ServerConfigurator = () => {
       setShowCanvas(true);
       setConfiguredComponents({ cpu: [], memory: [], gpu: [] });
       setErrors([]);
+    } else {
+      setShowCanvas(false);
+      setAvailableComponents({ cpu: [], memory: [], gpu: [] });
+      setConfiguredComponents({ cpu: [], memory: [], gpu: [] });
+      setErrors([]);
     }
-  }, [selectedServer, serverSpecs]);
+  }, [selectedServer]);
 
   // 드롭 전 유효성 사전 검사
   const canAddComponent = (component: string, type: string) => {
