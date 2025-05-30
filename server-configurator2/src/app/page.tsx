@@ -75,7 +75,7 @@ const ServerConfigurator = () => {
       setConfiguredComponents({ cpu: [], memory: [], gpu: [] });
       setErrors([]);
     }
-}, [selectedServer, serverSpecs]);
+  }, [selectedServer, serverSpecs]);
 
 
   // 드롭 전 유효성 사전 검사
