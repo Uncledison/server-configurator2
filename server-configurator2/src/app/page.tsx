@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Server, Cpu, HardDrive, Monitor } from 'lucide-react';
 
 const ServerConfigurator = () => {
   // 서버 스펙 데이터
-  const serverSpecs = {
+  const serverSpecs = useMemo(() => ({
     'Dell PowerEdge R750': {
       maxCPU: 2,
       maxMemory: 128, // GB
@@ -24,7 +24,7 @@ const ServerConfigurator = () => {
       compatibleGPUs: ['NVIDIA H100 80GB', 'NVIDIA A100 80GB', 'NVIDIA Tesla V100 32GB'],
       maxPowerConsumption: 1600
     }
-  };
+  }), []);
 
   // 컴포넌트 스펙 데이터
   const componentSpecs = {
@@ -64,8 +64,8 @@ const ServerConfigurator = () => {
 
   // 서버 선택 시 호환 가능한 컴포넌트 업데이트
   useEffect(() => {
-    if (selectedServer && serverSpecs[selectedServer]) {
-      const spec = serverSpecs[selectedServer];
+   if (selectedServer && serverSpecs[selectedServer as keyof typeof serverSpecs]) {
+  const spec = serverSpecs[selectedServer as keyof typeof serverSpecs];
       setAvailableComponents({
         cpu: spec.compatibleCPUs,
         memory: spec.compatibleMemory,
