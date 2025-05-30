@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Server, Cpu, HardDrive, Monitor } from 'lucide-react';
 
 const ServerConfigurator = () => {
-  // 서버 스펙 데이터
+  // 서버 스펙 데이터를 useMemo로 래핑
   const serverSpecs = useMemo(() => ({
     'Dell PowerEdge R750': {
       maxCPU: 2,
@@ -26,8 +26,8 @@ const ServerConfigurator = () => {
     }
   }), []);
 
-  // 컴포넌트 스펙 데이터
-  const componentSpecs = {
+  // 컴포넌트 스펙 데이터도 useMemo로 래핑
+  const componentSpecs = useMemo(() => ({
     'Intel Xeon Silver 4314': { power: 135, cores: 16 },
     'Intel Xeon Gold 5318Y': { power: 165, cores: 24 },
     'Intel Xeon Platinum 8380': { power: 270, cores: 40 },
@@ -45,27 +45,36 @@ const ServerConfigurator = () => {
     'NVIDIA A100 80GB': { memory: 80, power: 400 },
     'NVIDIA RTX 4090 24GB': { memory: 24, power: 450 },
     'NVIDIA Tesla V100 32GB': { memory: 32, power: 300 }
-  };
+  }), []);
 
-  const [selectedServer, setSelectedServer] = useState('');
+  const [selectedServer, setSelectedServer] = useState<string>('');
   const [configuredComponents, setConfiguredComponents] = useState({
-    cpu: [],
-    memory: [],
-    gpu: []
+    cpu: [] as string[],
+    memory: [] as string[],
+    gpu: [] as string[]
   });
   const [availableComponents, setAvailableComponents] = useState({
-    cpu: [],
-    memory: [],
-    gpu: []
+    cpu: [] as string[],
+    memory: [] as string[],
+    gpu: [] as string[]
   });
-  const [draggedItem, setDraggedItem] = useState(null);
-  const [errors, setErrors] = useState([]);
+  const [draggedItem, setDraggedItem] = useState<{component: string, type: string} | null>(null);
+  const [errors, setErrors] = useState<string[]>([]);
   const [showCanvas, setShowCanvas] = useState(false);
+
+  // 타입 가드 함수 추가
+  const isValidServerKey = (key: string): key is keyof typeof serverSpecs => {
+    return key in serverSpecs;
+  };
+
+  const isValidComponentKey = (key: string): key is keyof typeof componentSpecs => {
+    return key in componentSpecs;
+  };
 
   // 서버 선택 시 호환 가능한 컴포넌트 업데이트
   useEffect(() => {
-   if (selectedServer && serverSpecs[selectedServer as keyof typeof serverSpecs]) {
-  const spec = serverSpecs[selectedServer as keyof typeof serverSpecs];
+    if (selectedServer && isValidServerKey(selectedServer)) {
+      const spec = serverSpecs[selectedServer];
       setAvailableComponents({
         cpu: spec.compatibleCPUs,
         memory: spec.compatibleMemory,
@@ -77,13 +86,14 @@ const ServerConfigurator = () => {
     }
   }, [selectedServer, serverSpecs]);
 
-
   // 드롭 전 유효성 사전 검사
-  const canAddComponent = (component, type) => {
+  const canAddComponent = (component: string, type: string) => {
+    if (!isValidServerKey(selectedServer)) return { valid: false, error: '서버를 선택해주세요.' };
+    
     const spec = serverSpecs[selectedServer];
     const newConfig = {
       ...configuredComponents,
-      [type]: [...configuredComponents[type], component]
+      [type]: [...configuredComponents[type as keyof typeof configuredComponents], component]
     };
     
     // 개수 제한 검사
@@ -96,15 +106,24 @@ const ServerConfigurator = () => {
     }
     
     // 메모리 용량 제한 검사
-    const totalMemory = newConfig.memory.reduce((sum, mem) => 
-      sum + componentSpecs[mem].capacity, 0);
+    const totalMemory = newConfig.memory.reduce((sum, mem) => {
+      if (isValidComponentKey(mem)) {
+        return sum + componentSpecs[mem].capacity;
+      }
+      return sum;
+    }, 0);
     if (totalMemory > spec.maxMemory) {
       return { valid: false, error: `메모리는 최대 ${spec.maxMemory}GB까지만 설치 가능합니다.` };
     }
     
     // 전력 소비량 제한 검사
     const totalPower = [...newConfig.cpu, ...newConfig.memory, ...newConfig.gpu]
-      .reduce((sum, comp) => sum + componentSpecs[comp].power, 0);
+      .reduce((sum, comp) => {
+        if (isValidComponentKey(comp)) {
+          return sum + componentSpecs[comp].power;
+        }
+        return sum;
+      }, 0);
     if (totalPower > spec.maxPowerConsumption) {
       return { valid: false, error: `전력 소비량이 최대 허용량 ${spec.maxPowerConsumption}W를 초과합니다.` };
     }
@@ -114,8 +133,10 @@ const ServerConfigurator = () => {
 
   // 유효성 검사 (기존 구성 재검사용)
   const validateConfiguration = (config = configuredComponents) => {
+    if (!isValidServerKey(selectedServer)) return false;
+    
     const spec = serverSpecs[selectedServer];
-    const newErrors = [];
+    const newErrors: string[] = [];
     
     if (config.cpu.length > spec.maxCPU) {
       newErrors.push(`CPU는 최대 ${spec.maxCPU}개까지만 설치 가능합니다.`);
@@ -125,14 +146,23 @@ const ServerConfigurator = () => {
       newErrors.push(`GPU는 최대 ${spec.maxGPU}개까지만 설치 가능합니다.`);
     }
     
-    const totalMemory = config.memory.reduce((sum, mem) => 
-      sum + componentSpecs[mem].capacity, 0);
+    const totalMemory = config.memory.reduce((sum, mem) => {
+      if (isValidComponentKey(mem)) {
+        return sum + componentSpecs[mem].capacity;
+      }
+      return sum;
+    }, 0);
     if (totalMemory > spec.maxMemory) {
       newErrors.push(`메모리는 최대 ${spec.maxMemory}GB까지만 설치 가능합니다.`);
     }
     
     const totalPower = [...config.cpu, ...config.memory, ...config.gpu]
-      .reduce((sum, comp) => sum + componentSpecs[comp].power, 0);
+      .reduce((sum, comp) => {
+        if (isValidComponentKey(comp)) {
+          return sum + componentSpecs[comp].power;
+        }
+        return sum;
+      }, 0);
     if (totalPower > spec.maxPowerConsumption) {
       newErrors.push(`전력 소비량이 최대 허용량 ${spec.maxPowerConsumption}W를 초과합니다.`);
     }
@@ -142,13 +172,13 @@ const ServerConfigurator = () => {
   };
 
   // 드래그 시작
-  const handleDragStart = (e, component, type) => {
+  const handleDragStart = (e: React.DragEvent, component: string, type: string) => {
     setDraggedItem({ component, type });
     e.dataTransfer.effectAllowed = 'copy';
   };
 
   // 캔버스에 드롭
-  const handleCanvasDrop = (e) => {
+  const handleCanvasDrop = (e: React.DragEvent) => {
     e.preventDefault();
     if (!draggedItem) return;
     
@@ -165,7 +195,7 @@ const ServerConfigurator = () => {
     // 유효한 경우에만 추가
     const newConfig = {
       ...configuredComponents,
-      [draggedItem.type]: [...configuredComponents[draggedItem.type], draggedItem.component]
+      [draggedItem.type]: [...configuredComponents[draggedItem.type as keyof typeof configuredComponents], draggedItem.component]
     };
     
     setConfiguredComponents(newConfig);
@@ -174,7 +204,7 @@ const ServerConfigurator = () => {
   };
 
   // 컴포넌트 제거
-  const removeComponent = (type, index) => {
+  const removeComponent = (type: keyof typeof configuredComponents, index: number) => {
     const newConfig = {
       ...configuredComponents,
       [type]: configuredComponents[type].filter((_, i) => i !== index)
@@ -183,7 +213,7 @@ const ServerConfigurator = () => {
     validateConfiguration(newConfig);
   };
 
-  const getComponentIcon = (type) => {
+  const getComponentIcon = (type: string) => {
     switch (type) {
       case 'cpu': return <Cpu className="w-6 h-6" />;
       case 'memory': return <HardDrive className="w-6 h-6" />;
@@ -194,8 +224,18 @@ const ServerConfigurator = () => {
 
   const calculateTotals = () => {
     const allComponents = [...configuredComponents.cpu, ...configuredComponents.memory, ...configuredComponents.gpu];
-    const totalPower = allComponents.reduce((sum, comp) => sum + componentSpecs[comp].power, 0);
-    const totalMemory = configuredComponents.memory.reduce((sum, mem) => sum + componentSpecs[mem].capacity, 0);
+    const totalPower = allComponents.reduce((sum, comp) => {
+      if (isValidComponentKey(comp)) {
+        return sum + componentSpecs[comp].power;
+      }
+      return sum;
+    }, 0);
+    const totalMemory = configuredComponents.memory.reduce((sum, mem) => {
+      if (isValidComponentKey(mem)) {
+        return sum + componentSpecs[mem].capacity;
+      }
+      return sum;
+    }, 0);
     return { totalPower, totalMemory };
   };
 
@@ -224,13 +264,13 @@ const ServerConfigurator = () => {
           </select>
         </div>
 
-        {showCanvas && (
+        {showCanvas && isValidServerKey(selectedServer) && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* 컴포넌트 팔레트 */}
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
               <h3 className="text-lg font-semibold text-white mb-4">사용 가능한 컴포넌트</h3>
               
-              {['cpu', 'memory', 'gpu'].map(type => (
+              {(['cpu', 'memory', 'gpu'] as const).map(type => (
                 <div key={type} className="mb-6">
                   <h4 className="text-md font-medium text-white/80 mb-3 capitalize flex items-center">
                     {getComponentIcon(type)}
@@ -246,10 +286,10 @@ const ServerConfigurator = () => {
                       >
                         {component}
                         <div className="text-xs text-white/70 mt-1">
-                          {type === 'memory' && `${componentSpecs[component].capacity}GB`}
-                          {type === 'gpu' && `${componentSpecs[component].memory}GB VRAM`}
-                          {type === 'cpu' && `${componentSpecs[component].cores} Cores`}
-                          <span className="ml-2">{componentSpecs[component].power}W</span>
+                          {type === 'memory' && isValidComponentKey(component) && `${componentSpecs[component].capacity}GB`}
+                          {type === 'gpu' && isValidComponentKey(component) && `${componentSpecs[component].memory}GB VRAM`}
+                          {type === 'cpu' && isValidComponentKey(component) && `${componentSpecs[component].cores} Cores`}
+                          {isValidComponentKey(component) && <span className="ml-2">{componentSpecs[component].power}W</span>}
                         </div>
                       </div>
                     ))}
@@ -268,7 +308,7 @@ const ServerConfigurator = () => {
               >
                 <p className="text-white/60 text-center mb-4">컴포넌트를 여기에 드래그하세요</p>
                 
-                {['cpu', 'memory', 'gpu'].map(type => (
+                {(['cpu', 'memory', 'gpu'] as const).map(type => (
                   <div key={type} className="mb-6">
                     <h4 className="text-white/80 font-medium mb-2 flex items-center">
                       {getComponentIcon(type)}
