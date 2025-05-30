@@ -73,8 +73,8 @@ const ServerConfigurator = () => {
 
   // 서버 선택 시 호환 가능한 컴포넌트 업데이트
   useEffect(() => {
-    if (selectedServer && isValidServerKey(selectedServer)) {
-      const spec = serverSpecs[selectedServer];
+    if (selectedServer && selectedServer in serverSpecs) {
+      const spec = serverSpecs[selectedServer as keyof typeof serverSpecs];
       setAvailableComponents({
         cpu: spec.compatibleCPUs,
         memory: spec.compatibleMemory,
@@ -88,9 +88,11 @@ const ServerConfigurator = () => {
 
   // 드롭 전 유효성 사전 검사
   const canAddComponent = (component: string, type: string) => {
-    if (!isValidServerKey(selectedServer)) return { valid: false, error: '서버를 선택해주세요.' };
+    if (!selectedServer || !(selectedServer in serverSpecs)) {
+      return { valid: false, error: '서버를 선택해주세요.' };
+    }
     
-    const spec = serverSpecs[selectedServer];
+    const spec = serverSpecs[selectedServer as keyof typeof serverSpecs];
     const newConfig = {
       ...configuredComponents,
       [type]: [...configuredComponents[type as keyof typeof configuredComponents], component]
@@ -133,9 +135,9 @@ const ServerConfigurator = () => {
 
   // 유효성 검사 (기존 구성 재검사용)
   const validateConfiguration = (config = configuredComponents) => {
-    if (!isValidServerKey(selectedServer)) return false;
+    if (!selectedServer || !(selectedServer in serverSpecs)) return false;
     
-    const spec = serverSpecs[selectedServer];
+    const spec = serverSpecs[selectedServer as keyof typeof serverSpecs];
     const newErrors: string[] = [];
     
     if (config.cpu.length > spec.maxCPU) {
@@ -264,7 +266,7 @@ const ServerConfigurator = () => {
           </select>
         </div>
 
-        {showCanvas && isValidServerKey(selectedServer) && (
+        {showCanvas && selectedServer && (selectedServer in serverSpecs) && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* 컴포넌트 팔레트 */}
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
@@ -314,7 +316,7 @@ const ServerConfigurator = () => {
                       {getComponentIcon(type)}
                       <span className="ml-2 capitalize">{type}</span>
                       <span className="ml-2 text-sm">
-                        ({configuredComponents[type].length}/{serverSpecs[selectedServer][`max${type.charAt(0).toUpperCase() + type.slice(1)}`] || '∞'})
+                        ({configuredComponents[type].length}/{serverSpecs[selectedServer as keyof typeof serverSpecs][`max${type.charAt(0).toUpperCase() + type.slice(1)}` as keyof typeof serverSpecs[keyof typeof serverSpecs]] || '∞'})
                       </span>
                     </h4>
                     <div className="space-y-2">
@@ -356,21 +358,21 @@ const ServerConfigurator = () => {
                 <div className="space-y-2 text-sm text-white/80">
                   <div className="flex justify-between">
                     <span>총 메모리:</span>
-                    <span>{totalMemory}GB / {serverSpecs[selectedServer].maxMemory}GB</span>
+                    <span>{totalMemory}GB / {serverSpecs[selectedServer as keyof typeof serverSpecs].maxMemory}GB</span>
                   </div>
                   <div className="flex justify-between">
                     <span>총 전력:</span>
-                    <span className={totalPower > serverSpecs[selectedServer].maxPowerConsumption ? 'text-red-300' : ''}>
-                      {totalPower}W / {serverSpecs[selectedServer].maxPowerConsumption}W
+                    <span className={totalPower > serverSpecs[selectedServer as keyof typeof serverSpecs].maxPowerConsumption ? 'text-red-300' : ''}>
+                      {totalPower}W / {serverSpecs[selectedServer as keyof typeof serverSpecs].maxPowerConsumption}W
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>CPU 개수:</span>
-                    <span>{configuredComponents.cpu.length} / {serverSpecs[selectedServer].maxCPU}</span>
+                    <span>{configuredComponents.cpu.length} / {serverSpecs[selectedServer as keyof typeof serverSpecs].maxCPU}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>GPU 개수:</span>
-                    <span>{configuredComponents.gpu.length} / {serverSpecs[selectedServer].maxGPU}</span>
+                    <span>{configuredComponents.gpu.length} / {serverSpecs[selectedServer as keyof typeof serverSpecs].maxGPU}</span>
                   </div>
                 </div>
               </div>
