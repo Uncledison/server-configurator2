@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { AlertTriangle, Server, Cpu, HardDrive, Zap, Monitor } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, Server, Cpu, HardDrive, Monitor } from 'lucide-react';
 
 const ServerConfigurator = () => {
   // 서버 스펙 데이터
@@ -75,7 +75,8 @@ const ServerConfigurator = () => {
       setConfiguredComponents({ cpu: [], memory: [], gpu: [] });
       setErrors([]);
     }
-  }, [selectedServer]);
+}, [selectedServer, serverSpecs]);
+
 
   // 드롭 전 유효성 사전 검사
   const canAddComponent = (component, type) => {
